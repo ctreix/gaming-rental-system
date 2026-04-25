@@ -51,17 +51,17 @@ export default function BookingPage() {
 
       const { data: reservations } = await supabase
         .from('reservations')
-        .select('start_time, end_time, status')
+        .select('*')
         .eq('unit_id', unit.id)
         .in('status', ['CONFIRMED', 'ACTIVE'])
         .gte('start_time', startOfDay.toISOString())
-        .lte('start_time', endOfDay.toISOString())
+        .lte('start_time', endOfDay.toISOString()) as { data: Array<{ start_time: string; end_time: string }> | null }
 
       const { data: locks } = await supabase
         .from('reservation_locks')
-        .select('start_time, end_time')
+        .select('*')
         .eq('unit_id', unit.id)
-        .gt('expires_at', new Date().toISOString())
+        .gt('expires_at', new Date().toISOString()) as { data: Array<{ start_time: string; end_time: string }> | null }
 
       const slots: Date[] = []
       for (let hour = 8; hour < 24; hour++) {
@@ -168,7 +168,7 @@ export default function BookingPage() {
         total_amount: totalAmount,
         status: 'PENDING',
         payment_status: 'PENDING',
-      })
+      } as any)
       .select()
       .single()
 

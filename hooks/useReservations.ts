@@ -211,7 +211,7 @@ export function useReservationLock() {
     startTime: Date,
     endTime: Date,
     durationMinutes: number = 15
-  ) => {
+  ): Promise<{ success: boolean; session_id: string; message: string } | null> => {
     setLocking(true)
     try {
       const { data: { user } } = await supabase.auth.getUser()
@@ -223,16 +223,16 @@ export function useReservationLock() {
         p_start_time: startTime.toISOString(),
         p_end_time: endTime.toISOString(),
         p_duration_minutes: durationMinutes,
-      })
+      } as any)
 
       if (error) throw error
-      return data
+      return data as { success: boolean; session_id: string; message: string } | null
     } finally {
       setLocking(false)
     }
   }
 
-  const releaseLock = async (sessionId: string) => {
+  const releaseLock = async (sessionId: string): Promise<boolean> => {
     try {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error('User not authenticated')
@@ -240,10 +240,10 @@ export function useReservationLock() {
       const { data, error } = await supabase.rpc('release_unit_lock', {
         p_session_id: sessionId,
         p_user_id: user.id,
-      })
+      } as any)
 
       if (error) throw error
-      return data
+      return data as boolean as boolean
     } catch (err) {
       console.error('Failed to release lock:', err)
       return false

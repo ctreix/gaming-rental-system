@@ -1,3 +1,10 @@
 {
-  "/customer/book/[id]/page": "app/customer/book/[id]/page.js"
+  "/_not-found": "app/_not-found.js",
+  "/auth/login/page": "app/auth/login/page.js",
+  "/customer/book/[id]/page": "app/customer/book/[id]/page.js",
+  "/auth/register/page": "app/auth/register/page.js",
+  "/customer/reservations/page": "app/customer/reservations/page.js",
+  "/customer/page": "app/customer/page.js",
+  "/admin/page": "app/admin/page.js",
+  "/page": "app/page.js"
 }

@@ -137,24 +137,26 @@ export function useUnitAvailability(unitId: string, date: Date) {
         endOfDay.setHours(23, 59, 59, 999)
 
         // Get all reservations for this unit on this date
-        const { data: reservations, error } = await supabase
+        const reservationsResult = await supabase
           .from('reservations')
-          .select('start_time, end_time, status')
+          .select('*')
           .eq('unit_id', unitId)
           .in('status', ['CONFIRMED', 'ACTIVE'])
           .gte('start_time', startOfDay.toISOString())
           .lte('start_time', endOfDay.toISOString())
 
-        if (error) throw error
+        if (reservationsResult.error) throw reservationsResult.error
+        const reservations = reservationsResult.data as Array<{ start_time: string; end_time: string }> | null
 
         // Get all active locks for this unit
-        const { data: locks, error: lockError } = await supabase
+        const locksResult = await supabase
           .from('reservation_locks')
-          .select('start_time, end_time')
+          .select('*')
           .eq('unit_id', unitId)
           .gt('expires_at', new Date().toISOString())
 
-        if (lockError) throw lockError
+        if (locksResult.error) throw locksResult.error
+        const locks = locksResult.data as Array<{ start_time: string; end_time: string }> | null
 
         // Generate time slots (8 AM to 12 AM, 1 hour intervals)
         const slots = []
