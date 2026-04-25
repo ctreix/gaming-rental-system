@@ -31,8 +31,13 @@
   * {
     @apply border-border;
   }
+  html {
+    background-color: #0a0a0f;
+  }
   body {
-    @apply bg-gaming-dark text-foreground;
+    @apply text-foreground;
+    background-color: #0a0a0f;
+    min-height: 100vh;
   }
 }
 

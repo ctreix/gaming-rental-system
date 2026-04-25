@@ -596,10 +596,13 @@ video {
   * {
   border-color: hsl(var(--border));
 }
+  html {
+    background-color: #0a0a0f;
+  }
   body {
-  --tw-bg-opacity: 1;
-  background-color: rgb(10 10 15 / var(--tw-bg-opacity, 1));
   color: hsl(var(--foreground));
+    background-color: #0a0a0f;
+    min-height: 100vh;
 }
 .sr-only {
   position: absolute;
@@ -962,6 +965,10 @@ video {
 }
 .bg-secondary {
   background-color: hsl(var(--secondary));
+}
+.bg-\[\#0a0a0f\] {
+  --tw-bg-opacity: 1;
+  background-color: rgb(10 10 15 / var(--tw-bg-opacity, 1));
 }
 .bg-gradient-to-r {
   background-image: linear-gradient(to right, var(--tw-gradient-stops));

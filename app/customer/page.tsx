@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useUnits } from '@/hooks/useUnits'
 import { useUser } from '@/hooks/useSupabase'
@@ -63,6 +63,12 @@ export default function CustomerPortal() {
   const supabase = createClient()
   const [activeTab, setActiveTab] = useState('all')
 
+  useEffect(() => {
+    if (!user && !loading) {
+      router.push('/auth/login')
+    }
+  }, [user, loading, router])
+
   const handleLogout = async () => {
     await supabase.auth.signOut()
     router.push('/')
@@ -77,7 +83,7 @@ export default function CustomerPortal() {
   const ps5Count = units.filter(u => u.type === 'PS5').length
   const vipCount = units.filter(u => u.type === 'VIP').length
 
-  if (loading) {
+  if (loading || (!user && !loading)) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-pulse text-cyan-400">Loading...</div>
@@ -86,7 +92,7 @@ export default function CustomerPortal() {
   }
 
   return (
-    <div className="min-h-screen py-8 px-4">
+    <div className="min-h-screen py-8 px-4 bg-[#0a0a0f]">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8 gap-4">
@@ -99,19 +105,23 @@ export default function CustomerPortal() {
             </p>
           </div>
           <div className="flex gap-3">
-            <Link href="/customer/reservations">
-              <Button variant="outline" className="border-cyan-500/50 text-cyan-400">
-                My Reservations
-              </Button>
-            </Link>
-            <Button 
-              variant="outline" 
-              className="border-red-500/50 text-red-400"
-              onClick={handleLogout}
-            >
-              <LogOut className="h-4 w-4 mr-2" />
-              Logout
-            </Button>
+            {user && (
+              <>
+                <Link href="/customer/reservations">
+                  <Button variant="outline" className="border-cyan-500/50 text-cyan-400">
+                    My Reservations
+                  </Button>
+                </Link>
+                <Button 
+                  variant="outline" 
+                  className="border-red-500/50 text-red-400"
+                  onClick={handleLogout}
+                >
+                  <LogOut className="h-4 w-4 mr-2" />
+                  Logout
+                </Button>
+              </>
+            )}
           </div>
         </div>
 
