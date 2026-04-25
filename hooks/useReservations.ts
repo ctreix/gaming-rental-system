@@ -74,6 +74,85 @@ export function useReservations() {
   return { reservations, loading, error, refetch: fetchReservations }
 }
 
+export function useUserReservations() {
+  const supabase = createClient()
+  const [reservations, setReservations] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  const fetchReservations = useCallback(async () => {
+    try {
+      setLoading(true)
+      setError(null)
+      const { data: { user } } = await supabase.auth.getUser()
+      
+      if (!user) {
+        setReservations([])
+        setLoading(false)
+        return
+      }
+
+      const { data, error: fetchError } = await supabase
+        .from('reservations')
+        .select(`
+          *,
+          unit:units(*)
+        `)
+        .eq('user_id', user.id)
+        .order('start_time', { ascending: false })
+
+      if (fetchError) {
+        console.error('Fetch error:', fetchError)
+        throw fetchError
+      }
+      setReservations(data || [])
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch reservations')
+      console.error('Failed to fetch reservations:', err)
+      setReservations([])
+    } finally {
+      setLoading(false)
+    }
+  }, [supabase])
+
+  useEffect(() => {
+    fetchReservations()
+
+    const channel = supabase
+      .channel('user-reservations')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'reservations',
+        },
+        (payload) => {
+          if (payload.eventType === 'INSERT') {
+            setReservations((prev) => [payload.new as Reservation, ...prev])
+          } else if (payload.eventType === 'UPDATE') {
+            setReservations((prev) =>
+              prev.map((res) =>
+                res.id === payload.new.id ? (payload.new as Reservation) : res
+              )
+            )
+          } else if (payload.eventType === 'DELETE') {
+            setReservations((prev) =>
+              prev.filter((res) => res.id !== payload.old.id)
+            )
+          }
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [supabase, fetchReservations])
+
+  return { reservations, loading, error, refetch: fetchReservations }
+}
+
 export function useAllReservations() {
   const supabase = createClient()
   const [reservations, setReservations] = useState<ReservationWithDetails[]>([])

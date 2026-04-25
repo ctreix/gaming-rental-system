@@ -21,6 +21,7 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import { formatCurrency, formatDate, calculateDurationHours } from '@/lib/utils'
+import { toast } from 'sonner'
 
 export default function BookingPage() {
   const params = useParams()
@@ -106,17 +107,23 @@ export default function BookingPage() {
   const handleContinue = async () => {
     if (selectedSlots.length === 0) return
     
+    console.log('handleContinue called')
     setLoading(true)
     setError(null)
 
     const startTime = selectedSlots[0]
     const endTime = new Date(selectedSlots[selectedSlots.length - 1])
     endTime.setHours(endTime.getHours() + 1)
+    
+    console.log('Acquiring lock...', { unitId: unit!.id, startTime, endTime })
 
     const result = await acquireLock(unit!.id, startTime, endTime)
+    console.log('Lock result:', result)
 
-    if (!result.success) {
-      setError(result.message)
+    if (!result || !result.success) {
+      console.error('Lock failed:', result?.message || 'Unknown error')
+      toast.error(result?.message || 'Failed to lock time slot')
+      setError(result?.message || 'Failed to lock time slot')
       setLoading(false)
       return
     }
@@ -124,6 +131,7 @@ export default function BookingPage() {
     setSessionId(result.session_id)
     setStep('confirm')
     setLoading(false)
+    console.log('Step changed to confirm')
   }
 
   const handleConfirm = async () => {
@@ -146,6 +154,8 @@ export default function BookingPage() {
     const totalHours = selectedSlots.length
     const totalAmount = unit.hourly_rate * totalHours
 
+    console.log('Creating reservation...', { user_id: user.id, unit_id: unit.id })
+
     const { data: reservation, error: createError } = await supabase
       .from('reservations')
       .insert({
@@ -162,18 +172,30 @@ export default function BookingPage() {
       .select()
       .single()
 
+    console.log('Reservation result:', { reservation, createError })
+
+    // Always release lock, even on error
+    if (sessionId) {
+      await releaseLock(sessionId)
+    }
+
     if (createError) {
+      console.error('Reservation creation failed:', createError)
+      toast.error(`Booking failed: ${createError.message}`)
       setError(createError.message)
       setLoading(false)
       return
     }
 
-    // Release the lock
-    if (sessionId) {
-      await releaseLock(sessionId)
+    if (!reservation) {
+      toast.error('Booking failed: No reservation data returned')
+      setLoading(false)
+      return
     }
 
-    router.push(`/customer/reservations/${reservation.id}/payment`)
+    console.log('Reservation created successfully:', reservation)
+    toast.success('Booking confirmed!')
+    router.push('/customer/reservations')
   }
 
   const unitTypeIcon = unit?.type === 'PC' ? <Monitor className="h-5 w-5" /> :

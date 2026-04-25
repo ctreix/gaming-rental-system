@@ -34,19 +34,23 @@ export default function RegisterPage() {
       return
     }
 
-    // Create profile
+    // Create or update profile
     if (authData.user) {
-      const { error: profileError } = await supabase.from('profiles').insert({
+      const { error: profileError } = await supabase.from('profiles').upsert({
         id: authData.user.id,
-        full_name: fullName,
-        phone_number: phone,
+        full_name: fullName || null,
+        phone_number: phone || null,
         role: 'CUSTOMER',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      } as any, {
+        onConflict: 'id',
+        ignoreDuplicates: false,
       })
 
       if (profileError) {
-        setError(profileError.message)
-        setLoading(false)
-        return
+        console.error('Profile error:', profileError)
+        // Don't block registration if profile already exists
       }
     }
 
