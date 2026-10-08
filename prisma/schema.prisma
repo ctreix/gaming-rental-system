@@ -1,0 +1,124 @@
+// Local SQLite schema replacing the legacy hosted Postgres schema
+// (see the archived SQL migration under docs/).
+// Field names are snake_case to match the SQL columns exactly, so API
+// responses keep the same JSON shape the UI already consumes.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// User merges the legacy hosted `auth.users` and `profiles` tables.
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  password_hash String
+  full_name     String?
+  phone_number  String?
+  role          String   @default("CUSTOMER")
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+
+  reservations          Reservation[]
+  locks                 ReservationLock[]
+  password_reset_tokens PasswordResetToken[]
+
+  @@map("users")
+}
+
+model Unit {
+  id             String   @id @default(uuid())
+  name           String
+  type           String
+  specifications String   @default("{}")
+  hourly_rate    Int
+  status         String   @default("AVAILABLE")
+  locked_until   DateTime?
+  locked_by      String?
+  image_url      String?
+  description    String?
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
+
+  reservations Reservation[]
+  locks        ReservationLock[]
+
+  @@index([type])
+  @@index([status])
+  @@map("units")
+}
+
+model Reservation {
+  id                  String   @id @default(uuid())
+  user_id             String
+  unit_id             String
+  status              String   @default("PENDING")
+  payment_status      String   @default("PENDING")
+  start_time          DateTime
+  end_time            DateTime
+  hourly_rate         Int
+  total_hours         Int
+  total_amount        Int
+  payment_proof_url   String?
+  payment_verified_at DateTime?
+  payment_verified_by String?
+  notes               String?
+  created_at          DateTime @default(now())
+  updated_at          DateTime @updatedAt
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  unit Unit  @relation(fields: [unit_id], references: [id])
+
+  @@index([user_id])
+  @@index([unit_id])
+  @@index([status])
+  @@index([start_time, end_time])
+  @@map("reservations")
+}
+
+model ReservationLock {
+  id         String   @id @default(uuid())
+  unit_id    String
+  user_id    String
+  start_time DateTime
+  end_time   DateTime
+  expires_at DateTime
+  session_id String   @default(uuid())
+  created_at DateTime @default(now())
+
+  unit Unit  @relation(fields: [unit_id], references: [id], onDelete: Cascade)
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([expires_at])
+  @@index([unit_id])
+  @@map("reservation_locks")
+}
+
+model PasswordResetToken {
+  id         String    @id @default(cuid())
+  user_id    String
+  token_hash String
+  expires_at DateTime
+  used_at    DateTime?
+  created_at DateTime  @default(now())
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([token_hash])
+  @@map("password_reset_tokens")
+}
+
+model EmailOutbox {
+  id         String   @id @default(cuid())
+  to         String
+  subject    String
+  body       String
+  created_at DateTime @default(now())
+
+  @@map("email_outbox")
+}

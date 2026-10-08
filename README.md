@@ -1,264 +1,163 @@
 # Gaming Rental Reservation System
 
-A complete, production-ready Gaming Rental Reservation System built for university project (Rekayasa Perangkat Lunak). Features real-time unit availability, 15-minute booking locks, privacy masking, and an admin dashboard for inventory management.
+A gaming-station rental and reservation app built with Next.js 14 (App Router).
+It runs fully locally: a SQLite database through Prisma, JWT session auth, and
+Next.js route handlers. No external services are required.
 
 ## Tech Stack
 
-| Category | Technology |
-|----------|------------|
+| Layer | Technology |
+|-------|------------|
 | Frontend | Next.js 14 (App Router), React 18, TypeScript |
 | Styling | Tailwind CSS, shadcn/ui |
-| Backend | Supabase (Auth, Database, Realtime, Storage) |
+| Backend | Next.js Route Handlers + Prisma |
+| Database | SQLite (local file) |
+| Auth | httpOnly JWT session cookie (`jose`, HS256) + `bcryptjs` password hashing |
+| Validation | Zod (shared between the API routes and the pages) |
 | Icons | Lucide React |
-| Aesthetic | Gaming/Cyberpunk Dark Mode |
+| Tests | Vitest (unit + API), Playwright (E2E) |
 
 ## Features
 
-### Customer Portal
-- **Unit Selection**: Browse gaming stations by type (PC, PS5, VIP)
-- **Real-time Availability**: See live unit status with Supabase Realtime
-- **Hourly Slot Picker**: Select available time slots (8 AM - 12 AM)
-- **Technical Specs View**: View detailed hardware specifications
-- **Payment Proof Upload**: Upload payment proof via Supabase Storage
+### Customer
+- Browse gaming stations and filter by type (PC, PS5, VIP).
+- View unit details and hardware specifications.
+- Check hourly availability (08:00-23:00 WIB) for a chosen date; already-started
+  and booked slots are shown as unavailable.
+- Select consecutive hourly slots and hold them with a 15-minute booking lock.
+- Create a reservation; the price is calculated on the server from the lock and
+  the unit's hourly rate (amounts sent by the client are ignored).
+- List own reservations and cancel a reservation that is still `PENDING`.
 
-### Admin Dashboard
-- **Real-time Monitoring**: Live unit status monitoring
-- **Booking Validation**: Verify and confirm pending reservations
-- **Inventory Management**: CRUD operations for gaming units
-- **Analytics**: Revenue tracking and reservation statistics
+### Admin
+- Read-only dashboard: unit counts, pending count, revenue (only `PAID`
+  reservations) and a table of all reservations.
+- Change a reservation's status through the allowed transitions
+  (Confirm / Start / Complete / No-show / Cancel). Confirming a booking marks
+  the payment `PAID` and records who verified it; cancelling a confirmed
+  booking marks the payment `REFUNDED`.
+- User names are masked in list views.
 
-### Core System Features
-- **15-Minute Lock**: Concurrency lock prevents double-booking
-- **Privacy Protection**: User names masked in public views (e.g., "Ctreix" → "C***x")
-- **Real-time Updates**: Instant UI updates via Supabase Realtime
-- **Role-Based Access**: Customer and Admin role separation
+### Authentication
+- Register, log in, log out, and view the current user.
+- Forgot password: a 30-minute single-use reset link (stored as a sha256 hash)
+  is queued in a local `email_outbox` table and printed to the server console.
+  In development, `/dev/mail` shows the last 20 outbox messages.
+- Input validation is shared between the pages and the API routes.
 
-## Database Schema
+## Setup
 
-```
-┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
-│     units       │     │  reservations   │     │    profiles     │
-├─────────────────┤     ├─────────────────┤     ├─────────────────┤
-│ id (uuid)       │────▶│ id (uuid)       │◀────│ id (uuid)       │
-│ name            │     │ user_id         │     │ full_name       │
-│ type            │     │ unit_id         │     │ phone_number    │
-│ specifications  │     │ status          │     │ role            │
-│ hourly_rate     │     │ payment_status  │     │ avatar_url      │
-│ status          │     │ start_time      │     └─────────────────┘
-│ locked_until    │     │ end_time        │
-│ locked_by       │     │ total_amount    │
-└─────────────────┘     │ payment_proof   │
-                        └─────────────────┘
-                              │
-                              ▼
-                        ┌─────────────────┐
-                        │reservation_locks│
-                        ├─────────────────┤
-                        │ id (uuid)       │
-                        │ unit_id         │
-                        │ user_id         │
-                        │ expires_at      │
-                        │ session_id      │
-                        └─────────────────┘
-```
+Prerequisites: Node.js 18+ and npm.
 
-## System Architecture
-
-### Concurrency Lock Flow (15-Minute Lock)
-
-```
-1. User selects time slots
-   ↓
-2. System calls acquire_unit_lock() RPC
-   - Checks for conflicting reservations
-   - Creates reservation_locks entry
-   - Updates units.status = 'LOCKED'
-   ↓
-3. User has 15 minutes to complete payment
-   ↓
-4. On completion: Lock released, reservation created
-   On expiry: clean_expired_locks() removes lock
-```
-
-### Privacy Masking
-
-```typescript
-// Input: "Christopher"
-// Output: "C********r"
-
-// Input: "Alice Smith"
-// Output: "A********h"
-
-// Implemented via mask_username() PostgreSQL function
-```
-
-## Installation
-
-### Prerequisites
-- Node.js 18+
-- npm or yarn
-- Supabase account
-
-### Setup Steps
-
-1. **Clone and install dependencies:**
 ```bash
-cd gaming-rental-system
 npm install
+cp .env.example .env        # then set AUTH_SECRET (e.g. openssl rand -base64 32)
+npm run db:migrate          # create the SQLite database and apply migrations
+npm run db:seed             # insert the demo accounts and units
+npm run dev                 # http://localhost:3000
 ```
 
-2. **Configure environment variables:**
+Environment variables (see `.env.example`):
+
+| Variable | Purpose |
+|----------|---------|
+| `DATABASE_URL` | SQLite file, e.g. `file:./dev.db` |
+| `AUTH_SECRET` | Secret used to sign session and reset tokens |
+| `APP_URL` | Public base URL, used in password-reset links |
+
+### Seeded demo accounts (local development only)
+
+| Role | Email | Password |
+|------|-------|----------|
+| ADMIN | `admin@gamerent.local` | `Admin12345` |
+| CUSTOMER | `customer@gamerent.local` | `Customer12345` |
+
+The seed also creates 8 units (3 PC, 3 PS5, 2 VIP).
+
+## Scripts
+
+| Script | Description |
+|--------|-------------|
+| `npm run dev` | Start the development server |
+| `npm run build` | Production build |
+| `npm run start` | Start the production server |
+| `npm run lint` | Next.js lint |
+| `npm run db:migrate` | Create/apply migrations (`prisma migrate dev`) |
+| `npm run db:seed` | Run the seed (`prisma db seed`) |
+| `npm run db:reset` | Reset the database and re-seed |
+| `npm test` | Vitest unit + API tests |
+| `npm run test:e2e` | Playwright end-to-end tests |
+
+## Testing
+
+Tests run against a throwaway SQLite copy (`prisma/test.db`), never the
+development database. Both suites apply migrations and seed that file first.
+
 ```bash
-cp .env.example .env.local
+npm test          # unit tests (lib/utils, lib/validation, lib/reservation-status)
+                  # + API tests driven against a dev server on port 3210
+npm run test:e2e  # Playwright, dev server on port 3000 with DATABASE_URL=file:./test.db
 ```
 
-Edit `.env.local` with your Supabase credentials:
-```env
-NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
-SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
-```
+- Unit tests live in `tests/unit`, API tests in `tests/api`, E2E specs in
+  `tests/e2e`.
+- If a dev server is already running on port 3000, Playwright reuses it
+  (`reuseExistingServer: true`); make sure it points at `prisma/test.db`.
+- Running the E2E suite right after a production build can print a transient
+  `Failed to generate static paths` warning from the dev server; deleting
+  `.next` clears it.
 
-3. **Run database migrations:**
-Execute the SQL in `supabase/migrations/001_initial_schema.sql` in your Supabase SQL Editor.
+## Data Model
 
-4. **Start development server:**
-```bash
-npm run dev
-```
-
-5. **Build for production:**
-```bash
-npm run build
-```
-
-## ISO/IEC 25010 Quality Assurance Table
-
-| Characteristic | Sub-characteristic | Implementation | Verification Method |
-|----------------|-------------------|----------------|---------------------|
-| **Functional Suitability** | | | |
-| | Functional Completeness | All required features implemented: unit booking, 15-min lock, payment upload, admin dashboard | Feature checklist validation |
-| | Functional Correctness | PostgreSQL constraints ensure data integrity (time ranges, valid statuses) | Unit tests, Integration tests |
-| | Functional Appropriateness | Real-time updates via Supabase Realtime for accurate availability | Manual testing, E2E tests |
-| **Performance Efficiency** | | | |
-| | Time Behaviour | Database indexes on units.status, reservations.time_range for fast queries | Query performance analysis |
-| | Resource Utilization | Efficient use of Supabase free tier; minimal client-side state | Lighthouse audit |
-| | Capacity | Supports 50+ gaming units, 1000+ daily reservations | Load testing with k6 |
-| **Compatibility** | | | |
-| | Co-existence | Isolated Supabase project with proper RLS policies | Security audit |
-| | Interoperability | REST API endpoints for reservation management | API contract testing |
-| **Usability** | | | |
-| | Appropriateness Recognizability | Clear status indicators (Available/Locked/Booked) with color coding | User testing (n=10) |
-| | Learnability | Intuitive booking flow: Select → Lock → Pay → Confirm | First-time user testing |
-| | Operability | Responsive design works on mobile and desktop | Cross-device testing |
-| | User Error Protection | Form validation, clear error messages, booking confirmation dialogs | Error scenario testing |
-| | User Interface Aesthetics | Cyberpunk gaming aesthetic with consistent color scheme | Design review |
-| **Reliability** | | | |
-| | Maturity | PostgreSQL triggers ensure data consistency | Data integrity tests |
-| | Availability | Supabase provides 99.9% SLA; offline queue for lock expiry | Uptime monitoring |
-| | Fault Tolerance | Graceful handling of lock expiry and concurrent bookings | Chaos testing |
-| | Recoverability | Automatic lock cleanup via cron job | Failure recovery testing |
-| **Security** | | | |
-| | Confidentiality | Row Level Security (RLS) policies; user data isolation | Security penetration test |
-| | Integrity | PostgreSQL constraints; foreign key relationships | Constraint validation |
-| | Non-repudiation | Activity logs table for audit trail | Audit log review |
-| | Accountability | User authentication via Supabase Auth | Auth flow testing |
-| | Authenticity | JWT tokens with proper expiration | Token validation |
-| **Maintainability** | | | |
-| | Modularity | Component-based React architecture; separated hooks | Code review |
-| | Reusability | Custom hooks (useUnits, useReservations) used across pages | Code duplication check |
-| | Analysability | TypeScript types for all database entities; clear file structure | Static analysis |
-| | Modifiability | Database schema migrations; environment-based configuration | Change impact analysis |
-| | Testability | Jest + React Testing Library setup | Test coverage report |
-| **Portability** | | | |
-| | Adaptability | Vercel-ready with environment variable configuration | Deployment test |
-| | Installability | Single `npm install` command; clear README | Installation testing |
-| | Replaceability | Abstracted Supabase client; swappable with other backends | Architecture review |
-
-## Project Structure
-
-```
-gaming-rental-system/
-├── app/
-│   ├── (auth)/           # Authentication pages
-│   │   ├── login/
-│   │   └── register/
-│   ├── (customer)/       # Customer portal
-│   │   ├── page.tsx
-│   │   └── book/[id]/
-│   ├── admin/            # Admin dashboard
-│   │   └── page.tsx
-│   ├── api/              # API routes
-│   ├── layout.tsx        # Root layout
-│   ├── page.tsx          # Landing page
-│   └── globals.css       # Global styles
-├── components/
-│   └── ui/               # shadcn/ui components
-├── hooks/
-│   ├── useSupabase.ts    # Auth hooks
-│   ├── useUnits.ts       # Unit data hooks
-│   └── useReservations.ts # Reservation hooks
-├── lib/
-│   ├── supabase.ts       # Browser client
-│   ├── server.ts         # Server client
-│   └── utils.ts          # Utility functions
-├── types/
-│   ├── database.ts       # Database types
-│   └── index.ts          # Export types
-└── supabase/
-    └── migrations/         # SQL migrations
-```
+`prisma/schema.prisma` defines: `User`, `Unit`, `Reservation`,
+`ReservationLock` (15-minute booking locks) and `PasswordResetToken`, plus an
+`EmailOutbox` table for the local reset links.
 
 ## API Endpoints
 
-### Supabase RPC Functions
+| Method | Endpoint | Access | Purpose |
+|--------|----------|--------|---------|
+| POST | `/api/auth/register` | public | Create an account (role is always CUSTOMER) |
+| POST | `/api/auth/login` | public | Issue the session cookie |
+| POST | `/api/auth/logout` | public | Clear the session cookie |
+| GET | `/api/auth/me` | session | Current user |
+| POST | `/api/auth/forgot-password` | public | Queue a reset link (always a neutral 200) |
+| POST | `/api/auth/reset-password` | public | Consume a reset token and set a new password |
+| GET | `/api/units?type=PC\|PS5\|VIP` | public | List units |
+| GET | `/api/units/[id]` | public | Unit detail |
+| GET | `/api/units/[id]/availability?date=YYYY-MM-DD` | session | Hourly slots for a date |
+| POST | `/api/locks` | session | Acquire a 15-minute lock |
+| DELETE | `/api/locks/[session_id]` | session (owner) | Release a lock |
+| POST | `/api/reservations` | session | Create a reservation from a lock |
+| GET | `/api/reservations/mine` | session | Own reservations |
+| PATCH | `/api/reservations/[id]` | session (owner or admin) | Change reservation status |
+| GET | `/api/admin/reservations` | admin | All reservations |
 
-| Function | Purpose | Parameters |
-|----------|---------|------------|
-| `acquire_unit_lock` | Lock unit for 15 minutes | unit_id, user_id, start_time, end_time, duration_minutes |
-| `release_unit_lock` | Release lock manually | session_id, user_id |
-| `clean_expired_locks` | Cron job to clean expired locks | none |
-| `mask_username` | Privacy masking for public views | full_name |
+## Reservation Status Transitions
 
-### Tables with Realtime
+The single source of truth is `lib/reservation-status.ts`; the UI only offers
+buttons for transitions the server will accept.
 
-- `units` - Real-time status updates
-- `reservations` - Booking changes
-- `reservation_locks` - Lock expiry notifications
+| From | To | Who | Side effect |
+|------|----|-----|-------------|
+| PENDING | CONFIRMED | ADMIN | payment → PAID, records verifier |
+| PENDING | CANCELLED | owner CUSTOMER or ADMIN | — |
+| CONFIRMED | ACTIVE | ADMIN | — |
+| ACTIVE | COMPLETED | ADMIN | — |
+| CONFIRMED | NO_SHOW | ADMIN | — |
+| CONFIRMED | CANCELLED | ADMIN | payment → REFUNDED |
 
-## Deployment
+## Not implemented yet
 
-### Vercel (Recommended)
-
-1. Push to GitHub
-2. Import to Vercel
-3. Add environment variables
-4. Deploy
-
-```bash
-# Or use Vercel CLI
-vercel --prod
-```
-
-### Environment Variables Required
-
-```env
-NEXT_PUBLIC_SUPABASE_URL=
-NEXT_PUBLIC_SUPABASE_ANON_KEY=
-SUPABASE_SERVICE_ROLE_KEY=
-NEXT_PUBLIC_APP_URL=
-```
+- Payment-proof upload and online payment gateways (payment is tracked only as
+  a status; there is no file upload endpoint).
+- Admin CRUD for units (create/edit/delete) — the admin dashboard is read-only.
+- Real email delivery (reset links go to the `email_outbox` table and the
+  console only).
+- Multi-instance rate limiting (the forgot-password limiter is in-memory, per
+  process).
+- Deployment configuration.
 
 ## License
 
-MIT License - For educational purposes (Universitas project)
-
-## Credits
-
-- Built for Rekayasa Perangkat Lunak course
-- Designed with shadcn/ui components
-- Powered by Supabase
-
----
-
-**Note**: This is a university project. The payment system is for demonstration purposes only. In production, integrate with real payment gateways (Stripe, Xendit, etc.).
+MIT License - for educational purposes.

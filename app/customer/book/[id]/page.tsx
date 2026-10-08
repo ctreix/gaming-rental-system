@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase'
 import { useUnit } from '@/hooks/useUnits'
 import { useReservationLock } from '@/hooks/useReservations'
 import { Button } from '@/components/ui/button'
@@ -20,13 +19,24 @@ import {
   Upload
 } from 'lucide-react'
 import Link from 'next/link'
-import { formatCurrency, formatDate, calculateDurationHours } from '@/lib/utils'
+import { formatCurrency, formatDate, calculateDurationHours, areSlotsContiguous } from '@/lib/utils'
 import { toast } from 'sonner'
+
+// Local-date helpers: Date#toISOString() is UTC, so splitting it shows the
+// wrong calendar date between 00:00 and 07:00 WIB.
+const toLocalDateString = (date: Date) =>
+  `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(
+    date.getDate()
+  ).padStart(2, '0')}`
+
+const parseLocalDate = (value: string) => {
+  const [year, month, day] = value.split('-').map(Number)
+  return new Date(year, month - 1, day)
+}
 
 export default function BookingPage() {
   const params = useParams()
   const router = useRouter()
-  const supabase = createClient()
   const { unit, loading: unitLoading } = useUnit(params.id as string)
   const { acquireLock, releaseLock, locking } = useReservationLock()
   
@@ -43,56 +53,34 @@ export default function BookingPage() {
     if (!unit) return
     
     const fetchAvailability = async () => {
-      const startOfDay = new Date(selectedDate)
-      startOfDay.setHours(0, 0, 0, 0)
-      
-      const endOfDay = new Date(selectedDate)
-      endOfDay.setHours(23, 59, 59, 999)
+      const y = selectedDate.getFullYear()
+      const m = String(selectedDate.getMonth() + 1).padStart(2, '0')
+      const d = String(selectedDate.getDate()).padStart(2, '0')
+      const dateStr = `${y}-${m}-${d}`
 
-      const { data: reservations } = await supabase
-        .from('reservations')
-        .select('*')
-        .eq('unit_id', unit.id)
-        .in('status', ['CONFIRMED', 'ACTIVE'])
-        .gte('start_time', startOfDay.toISOString())
-        .lte('start_time', endOfDay.toISOString()) as { data: Array<{ start_time: string; end_time: string }> | null }
-
-      const { data: locks } = await supabase
-        .from('reservation_locks')
-        .select('*')
-        .eq('unit_id', unit.id)
-        .gt('expires_at', new Date().toISOString()) as { data: Array<{ start_time: string; end_time: string }> | null }
-
-      const slots: Date[] = []
-      for (let hour = 8; hour < 24; hour++) {
-        const slotStart = new Date(selectedDate)
-        slotStart.setHours(hour, 0, 0, 0)
-        
-        const slotEnd = new Date(selectedDate)
-        slotEnd.setHours(hour + 1, 0, 0, 0)
-
-        const isBooked = reservations?.some(
-          (res) =>
-            new Date(res.start_time) < slotEnd &&
-            new Date(res.end_time) > slotStart
+      // The API returns one entry per hour (08:00-23:00 WIB) with the
+      // overlap / lock / already-started rules applied server-side.
+      let slotsData: Array<{ start: string; available: boolean }> = []
+      try {
+        const availabilityRes = await fetch(
+          `/api/units/${unit.id}/availability?date=${dateStr}`
         )
-
-        const isLocked = locks?.some(
-          (lock) =>
-            new Date(lock.start_time) < slotEnd &&
-            new Date(lock.end_time) > slotStart
-        )
-
-        if (!isBooked && !isLocked) {
-          slots.push(slotStart)
+        if (availabilityRes.ok) {
+          const data = await availabilityRes.json()
+          if (Array.isArray(data)) slotsData = data
         }
+      } catch (err) {
+        console.error('Failed to fetch availability:', err)
       }
-      
+
+      const slots = slotsData
+        .filter((slot) => slot.available)
+        .map((slot) => new Date(slot.start))
       setAvailableSlots(slots)
     }
 
     fetchAvailability()
-  }, [unit, selectedDate, supabase])
+  }, [unit, selectedDate])
 
   const handleSlotToggle = (slot: Date) => {
     setSelectedSlots(prev => {
@@ -104,24 +92,25 @@ export default function BookingPage() {
     })
   }
 
+  const slotsContiguous = areSlotsContiguous(selectedSlots)
+
   const handleContinue = async () => {
     if (selectedSlots.length === 0) return
-    
-    console.log('handleContinue called')
+    if (!slotsContiguous) {
+      setError('Selected hours must be consecutive.')
+      return
+    }
+
     setLoading(true)
     setError(null)
 
     const startTime = selectedSlots[0]
     const endTime = new Date(selectedSlots[selectedSlots.length - 1])
     endTime.setHours(endTime.getHours() + 1)
-    
-    console.log('Acquiring lock...', { unitId: unit!.id, startTime, endTime })
 
     const result = await acquireLock(unit!.id, startTime, endTime)
-    console.log('Lock result:', result)
 
     if (!result || !result.success) {
-      console.error('Lock failed:', result?.message || 'Unknown error')
       toast.error(result?.message || 'Failed to lock time slot')
       setError(result?.message || 'Failed to lock time slot')
       setLoading(false)
@@ -131,7 +120,6 @@ export default function BookingPage() {
     setSessionId(result.session_id)
     setStep('confirm')
     setLoading(false)
-    console.log('Step changed to confirm')
   }
 
   const handleConfirm = async () => {
@@ -140,49 +128,66 @@ export default function BookingPage() {
     setLoading(true)
     setError(null)
 
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
+    const me = await fetch('/api/auth/me')
+      .then((r) => r.json())
+      .catch(() => null)
+    if (!me?.user) {
       setError('Please sign in to continue')
       setLoading(false)
       return
     }
 
-    const startTime = selectedSlots[0]
-    const endTime = new Date(selectedSlots[selectedSlots.length - 1])
-    endTime.setHours(endTime.getHours() + 1)
+    if (!sessionId) {
+      setError('Booking session expired, please select your slots again')
+      setStep('select')
+      setLoading(false)
+      return
+    }
 
-    const totalHours = selectedSlots.length
-    const totalAmount = unit.hourly_rate * totalHours
+    let reservation: any = null
+    let createError: string | null = null
+    let sessionExpired = false
+    try {
+      // The server derives unit, times and pricing from the lock itself.
+      const res = await fetch('/api/reservations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ session_id: sessionId }),
+      })
+      const data = await res.json().catch(() => null)
+      if (res.status === 409) {
+        // Lock missing or expired: start over at slot selection.
+        sessionExpired = true
+      } else if (!res.ok) {
+        createError = data?.error ?? 'Booking failed'
+      } else {
+        reservation = data?.reservation ?? null
+      }
+    } catch (err) {
+      createError = err instanceof Error ? err.message : 'Booking failed'
+    }
 
-    console.log('Creating reservation...', { user_id: user.id, unit_id: unit.id })
+    if (sessionExpired) {
+      setSessionId(null)
+      setSelectedSlots([])
+      setStep('select')
+      setError(null)
+      setLoading(false)
+      toast.error('Your booking session expired. Please select your slots again.')
+      return
+    }
 
-    const { data: reservation, error: createError } = await supabase
-      .from('reservations')
-      .insert({
-        user_id: user.id,
-        unit_id: unit.id,
-        start_time: startTime.toISOString(),
-        end_time: endTime.toISOString(),
-        hourly_rate: unit.hourly_rate,
-        total_hours: totalHours,
-        total_amount: totalAmount,
-        status: 'PENDING',
-        payment_status: 'PENDING',
-      } as any)
-      .select()
-      .single()
-
-    console.log('Reservation result:', { reservation, createError })
-
-    // Always release lock, even on error
-    if (sessionId) {
+    // On failure release the lock so the slot frees up again; on success
+    // the server consumed it as part of creating the reservation.
+    if (createError && sessionId) {
       await releaseLock(sessionId)
+      setSessionId(null)
     }
 
     if (createError) {
       console.error('Reservation creation failed:', createError)
-      toast.error(`Booking failed: ${createError.message}`)
-      setError(createError.message)
+      toast.error(`Booking failed: ${createError}`)
+      setError(createError)
       setLoading(false)
       return
     }
@@ -193,7 +198,6 @@ export default function BookingPage() {
       return
     }
 
-    console.log('Reservation created successfully:', reservation)
     toast.success('Booking confirmed!')
     router.push('/customer/reservations')
   }
@@ -277,10 +281,10 @@ export default function BookingPage() {
                     </label>
                     <input
                       type="date"
-                      value={selectedDate.toISOString().split('T')[0]}
-                      min={new Date().toISOString().split('T')[0]}
+                      value={toLocalDateString(selectedDate)}
+                      min={toLocalDateString(new Date())}
                       onChange={(e) => {
-                        setSelectedDate(new Date(e.target.value))
+                        setSelectedDate(parseLocalDate(e.target.value))
                         setSelectedSlots([])
                       }}
                       className="w-full px-3 py-2 bg-gaming-dark border border-gray-700 rounded-lg text-white focus:outline-none focus:border-cyan-500"
@@ -318,6 +322,11 @@ export default function BookingPage() {
                         No available slots for this date.
                       </p>
                     )}
+                    {!slotsContiguous && (
+                      <p className="text-red-400 text-sm mt-2">
+                        Selected hours must be consecutive.
+                      </p>
+                    )}
                   </div>
 
                   {error && (
@@ -329,7 +338,7 @@ export default function BookingPage() {
 
                   <Button
                     className="w-full bg-cyan-500 hover:bg-cyan-600 text-white"
-                    disabled={selectedSlots.length === 0 || loading || locking}
+                    disabled={selectedSlots.length === 0 || !slotsContiguous || loading || locking}
                     onClick={handleContinue}
                   >
                     {loading || locking ? 'Processing...' : 'Continue'}

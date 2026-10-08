@@ -1,20 +1,17 @@
-import { Database } from './database'
-
-export type Tables<T extends keyof Database['public']['Tables']> =
-  Database['public']['Tables'][T]['Row']
-export type InsertTables<T extends keyof Database['public']['Tables']> =
-  Database['public']['Tables'][T]['Insert']
-export type UpdateTables<T extends keyof Database['public']['Tables']> =
-  Database['public']['Tables'][T]['Update']
-
-export type Unit = Tables<'units'>
-export type Profile = Tables<'profiles'>
-export type Reservation = Tables<'reservations'>
-export type ReservationLock = Tables<'reservation_locks'>
+// Hand-written types matching the JSON returned by the API route handlers.
+// Field names are snake_case and date fields are ISO strings, because the
+// route handlers serialize Prisma rows to JSON. These replace the earlier
+// generated database types that used to live in ./database (now deleted).
 
 export type UnitType = 'PC' | 'PS5' | 'VIP'
 export type UnitStatus = 'AVAILABLE' | 'LOCKED' | 'BOOKED' | 'MAINTENANCE' | 'OFFLINE'
-export type ReservationStatus = 'PENDING' | 'CONFIRMED' | 'ACTIVE' | 'COMPLETED' | 'CANCELLED' | 'NO_SHOW'
+export type ReservationStatus =
+  | 'PENDING'
+  | 'CONFIRMED'
+  | 'ACTIVE'
+  | 'COMPLETED'
+  | 'CANCELLED'
+  | 'NO_SHOW'
 export type PaymentStatus = 'PENDING' | 'PAID' | 'REFUNDED' | 'FAILED'
 export type UserRole = 'CUSTOMER' | 'ADMIN'
 
@@ -27,7 +24,63 @@ export interface UnitSpecifications {
   peripherals?: string[]
   internet?: string
   games?: string[]
-  [key: string]: any
+  [key: string]: unknown
+}
+
+export interface Unit {
+  id: string
+  name: string
+  type: UnitType
+  // `serializeUnit()` parses the stored TEXT into an object before responding.
+  specifications: UnitSpecifications
+  hourly_rate: number
+  status: UnitStatus
+  locked_until: string | null
+  locked_by: string | null
+  image_url: string | null
+  description: string | null
+  created_at: string
+  updated_at: string
+}
+
+// Shape returned by GET /api/auth/me (`user`) and nested under a reservation.
+export interface Profile {
+  id: string
+  full_name: string | null
+  phone_number: string | null
+  role: UserRole
+  created_at?: string
+  updated_at?: string
+}
+
+export interface Reservation {
+  id: string
+  user_id: string
+  unit_id: string
+  status: ReservationStatus
+  payment_status: PaymentStatus
+  start_time: string
+  end_time: string
+  hourly_rate: number
+  total_hours: number
+  total_amount: number
+  payment_proof_url: string | null
+  payment_verified_at: string | null
+  payment_verified_by: string | null
+  notes: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface ReservationLock {
+  id: string
+  unit_id: string
+  user_id: string
+  start_time: string
+  end_time: string
+  expires_at: string
+  session_id: string
+  created_at: string
 }
 
 export interface TimeSlot {
@@ -39,7 +92,7 @@ export interface TimeSlot {
 
 export interface ReservationWithDetails extends Reservation {
   unit?: Unit
-  user?: Profile
+  user?: Pick<Profile, 'id' | 'full_name' | 'phone_number' | 'role'> | null
 }
 
 export interface UnitWithReservations extends Unit {

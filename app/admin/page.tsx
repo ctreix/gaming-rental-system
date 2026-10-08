@@ -1,9 +1,9 @@
 'use client'
 
 import { useState } from 'react'
-import Link from 'next/link'
 import { useUnits } from '@/hooks/useUnits'
 import { useAllReservations } from '@/hooks/useReservations'
+import { logout } from '@/hooks/useAuth'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -14,24 +14,54 @@ import {
   Calendar, 
   DollarSign, 
   Activity,
-  Plus,
-  Settings,
   LogOut
 } from 'lucide-react'
-import { createClient } from '@/lib/supabase'
-import { useRouter } from 'next/navigation'
 import { formatCurrency, formatDate, maskUsername } from '@/lib/utils'
+import { toast } from 'sonner'
+import { canTransition, type ReservationStatus } from '@/lib/reservation-status'
+
+// Admin status actions, in the order they usually apply. Each button is shown
+// only when canTransition() allows it for the reservation's current status.
+const ADMIN_ACTIONS: { label: string; to: ReservationStatus }[] = [
+  { label: 'Confirm', to: 'CONFIRMED' },
+  { label: 'Start', to: 'ACTIVE' },
+  { label: 'Complete', to: 'COMPLETED' },
+  { label: 'No-show', to: 'NO_SHOW' },
+  { label: 'Cancel', to: 'CANCELLED' },
+]
+
+const ADMIN_ACTOR = { role: 'ADMIN' as const, isOwner: false }
 
 export default function AdminDashboard() {
   const { units, loading: unitsLoading } = useUnits()
-  const { reservations, loading: reservationsLoading } = useAllReservations()
-  const router = useRouter()
-  const supabase = createClient()
+  const {
+    reservations,
+    loading: reservationsLoading,
+    refetch: refetchReservations,
+  } = useAllReservations()
   const [activeTab, setActiveTab] = useState('overview')
 
   const handleLogout = async () => {
-    await supabase.auth.signOut()
-    router.push('/')
+    await logout()
+  }
+
+  const handleTransition = async (id: string, to: ReservationStatus) => {
+    try {
+      const res = await fetch(`/api/reservations/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: to }),
+      })
+      const data = await res.json().catch(() => null)
+      if (!res.ok) {
+        toast.error(data?.error ?? 'Failed to update reservation')
+        return
+      }
+      toast.success(`Reservation ${to.toLowerCase()}`)
+      refetchReservations()
+    } catch {
+      toast.error('Failed to update reservation')
+    }
   }
 
   const stats = {
@@ -67,12 +97,6 @@ export default function AdminDashboard() {
             <p className="text-gray-400">Manage units, reservations, and monitor activity</p>
           </div>
           <div className="flex gap-3">
-            <Link href="/admin/units/new">
-              <Button className="bg-cyan-500 hover:bg-cyan-600 text-white">
-                <Plus className="h-4 w-4 mr-2" />
-                Add Unit
-              </Button>
-            </Link>
             <Button 
               variant="outline" 
               className="border-red-500/50 text-red-400"
@@ -218,14 +242,6 @@ export default function AdminDashboard() {
                     <div className="text-cyan-400 font-bold">
                       {formatCurrency(unit.hourly_rate)}/hour
                     </div>
-                    <div className="flex gap-2">
-                      <Link href={`/admin/units/${unit.id}/edit`} className="flex-1">
-                        <Button variant="outline" className="w-full border-cyan-500/50 text-cyan-400">
-                          <Settings className="h-4 w-4 mr-2" />
-                          Edit
-                        </Button>
-                      </Link>
-                    </div>
                   </CardContent>
                 </Card>
               ))}
@@ -250,6 +266,7 @@ export default function AdminDashboard() {
                         <th className="text-left py-3 text-gray-400 font-medium">Amount</th>
                         <th className="text-left py-3 text-gray-400 font-medium">Status</th>
                         <th className="text-left py-3 text-gray-400 font-medium">Payment</th>
+                        <th className="text-left py-3 text-gray-400 font-medium">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -281,6 +298,27 @@ export default function AdminDashboard() {
                             }>
                               {reservation.payment_status}
                             </Badge>
+                          </td>
+                          <td className="py-3">
+                            <div className="flex flex-wrap gap-2">
+                              {ADMIN_ACTIONS.filter((action) =>
+                                canTransition(
+                                  reservation.status as ReservationStatus,
+                                  action.to,
+                                  ADMIN_ACTOR
+                                )
+                              ).map((action) => (
+                                <Button
+                                  key={action.to}
+                                  variant="outline"
+                                  size="sm"
+                                  data-testid={`admin-action-${action.to}`}
+                                  onClick={() => handleTransition(reservation.id, action.to)}
+                                >
+                                  {action.label}
+                                </Button>
+                              ))}
+                            </div>
                           </td>
                         </tr>
                       ))}

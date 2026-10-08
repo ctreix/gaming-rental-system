@@ -3,20 +3,19 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useUser } from '@/hooks/useSupabase'
+import { useUser, logout } from '@/hooks/useAuth'
 import { useUserReservations } from '@/hooks/useReservations'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { ArrowLeft, Calendar, Clock, Gamepad2, LogOut } from 'lucide-react'
-import { createClient } from '@/lib/supabase'
+import { toast } from 'sonner'
 import { formatCurrency, formatDate, formatTime } from '@/lib/utils'
 
 export default function MyReservations() {
   const router = useRouter()
   const { user, loading: userLoading } = useUser()
-  const { reservations, loading } = useUserReservations()
-  const supabase = createClient()
+  const { reservations, loading, refetch } = useUserReservations()
 
   useEffect(() => {
     if (!user && !userLoading) {
@@ -25,8 +24,27 @@ export default function MyReservations() {
   }, [user, userLoading, router])
 
   const handleLogout = async () => {
-    await supabase.auth.signOut()
-    router.push('/')
+    await logout()
+  }
+
+  const handleCancel = async (id: string) => {
+    if (!window.confirm('Cancel this reservation?')) return
+    try {
+      const res = await fetch(`/api/reservations/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'CANCELLED' }),
+      })
+      const data = await res.json().catch(() => null)
+      if (!res.ok) {
+        toast.error(data?.error ?? 'Failed to cancel reservation')
+        return
+      }
+      toast.success('Reservation cancelled')
+      refetch()
+    } catch {
+      toast.error('Failed to cancel reservation')
+    }
   }
 
   if (userLoading || (!user && !userLoading)) {
@@ -143,6 +161,19 @@ export default function MyReservations() {
                       </div>
                     </div>
                   </div>
+                  {reservation.status === 'PENDING' && (
+                    <div className="flex justify-end mt-4">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="border-red-500/50 text-red-400"
+                        data-testid="cancel-reservation"
+                        onClick={() => handleCancel(reservation.id)}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             ))}

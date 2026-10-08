@@ -1,10 +1,22 @@
 {
-  "/_not-found": "app/_not-found.js",
+  "/page": "app/page.js",
   "/auth/login/page": "app/auth/login/page.js",
-  "/customer/book/[id]/page": "app/customer/book/[id]/page.js",
-  "/auth/register/page": "app/auth/register/page.js",
-  "/customer/reservations/page": "app/customer/reservations/page.js",
+  "/api/auth/login/route": "app/api/auth/login/route.js",
+  "/api/auth/register/route": "app/api/auth/register/route.js",
+  "/auth/forgot-password/page": "app/auth/forgot-password/page.js",
+  "/auth/reset-password/page": "app/auth/reset-password/page.js",
+  "/api/auth/forgot-password/route": "app/api/auth/forgot-password/route.js",
   "/customer/page": "app/customer/page.js",
-  "/admin/page": "app/admin/page.js",
-  "/page": "app/page.js"
+  "/api/auth/reset-password/route": "app/api/auth/reset-password/route.js",
+  "/api/auth/me/route": "app/api/auth/me/route.js",
+  "/customer/book/[id]/page": "app/customer/book/[id]/page.js",
+  "/api/units/route": "app/api/units/route.js",
+  "/auth/register/page": "app/auth/register/page.js",
+  "/api/units/[id]/route": "app/api/units/[id]/route.js",
+  "/api/units/[id]/availability/route": "app/api/units/[id]/availability/route.js",
+  "/api/locks/route": "app/api/locks/route.js",
+  "/api/reservations/route": "app/api/reservations/route.js",
+  "/customer/reservations/page": "app/customer/reservations/page.js",
+  "/api/reservations/mine/route": "app/api/reservations/mine/route.js",
+  "/api/reservations/[id]/route": "app/api/reservations/[id]/route.js"
 }

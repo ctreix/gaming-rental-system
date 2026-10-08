@@ -1,249 +1,135 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import { createClient } from '@/lib/supabase'
-import { Reservation, ReservationWithDetails } from '@/types'
+import { Reservation, ReservationWithDetails, LockResult } from '@/types'
+import { usePolling } from '@/hooks/usePolling'
 
-export function useReservations() {
-  const supabase = createClient()
-  const [reservations, setReservations] = useState<Reservation[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+// Replaces the legacy realtime subscriptions with 5-second polling.
+const POLL_INTERVAL_MS = 5000
 
-  const fetchReservations = useCallback(async () => {
-    try {
-      setLoading(true)
-      const { data: { user } } = await supabase.auth.getUser()
-      
-      if (!user) {
-        setReservations([])
-        setLoading(false)
-        return
-      }
-
-      const { data, error } = await supabase
-        .from('reservations')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('start_time', { ascending: false })
-
-      if (error) throw error
-      setReservations(data || [])
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch reservations')
-    } finally {
-      setLoading(false)
-    }
-  }, [supabase])
-
-  useEffect(() => {
-    fetchReservations()
-
-    const channel = supabase
-      .channel('user-reservations')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'reservations',
-        },
-        (payload) => {
-          if (payload.eventType === 'INSERT') {
-            setReservations((prev) => [payload.new as Reservation, ...prev])
-          } else if (payload.eventType === 'UPDATE') {
-            setReservations((prev) =>
-              prev.map((res) =>
-                res.id === payload.new.id ? (payload.new as Reservation) : res
-              )
-            )
-          } else if (payload.eventType === 'DELETE') {
-            setReservations((prev) =>
-              prev.filter((res) => res.id !== payload.old.id)
-            )
-          }
-        }
-      )
-      .subscribe()
-
-    return () => {
-      supabase.removeChannel(channel)
-    }
-  }, [supabase, fetchReservations])
-
-  return { reservations, loading, error, refetch: fetchReservations }
+async function fetchJson(url: string): Promise<unknown> {
+  const res = await fetch(url)
+  if (!res.ok) {
+    const data = await res.json().catch(() => null)
+    throw new Error(data?.error ?? 'Failed to fetch reservations')
+  }
+  return res.json()
 }
 
+// Own reservations, newest first (GET /api/reservations/mine).
 export function useUserReservations() {
-  const supabase = createClient()
   const [reservations, setReservations] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const fetchReservations = useCallback(async () => {
+  const fetchReservations = useCallback(async (showLoading = false) => {
+    if (showLoading) setLoading(true)
     try {
-      setLoading(true)
+      const data = (await fetchJson('/api/reservations/mine')) as any[]
+      setReservations(data)
       setError(null)
-      const { data: { user } } = await supabase.auth.getUser()
-      
-      if (!user) {
-        setReservations([])
-        setLoading(false)
-        return
-      }
-
-      const { data, error: fetchError } = await supabase
-        .from('reservations')
-        .select(`
-          *,
-          unit:units(*)
-        `)
-        .eq('user_id', user.id)
-        .order('start_time', { ascending: false })
-
-      if (fetchError) {
-        console.error('Fetch error:', fetchError)
-        throw fetchError
-      }
-      setReservations(data || [])
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch reservations')
-      console.error('Failed to fetch reservations:', err)
+      setError(
+        err instanceof Error ? err.message : 'Failed to fetch reservations'
+      )
       setReservations([])
     } finally {
       setLoading(false)
     }
-  }, [supabase])
+  }, [])
 
   useEffect(() => {
-    fetchReservations()
+    fetchReservations(true)
+  }, [fetchReservations])
 
-    const channel = supabase
-      .channel('user-reservations')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'reservations',
-        },
-        (payload) => {
-          if (payload.eventType === 'INSERT') {
-            setReservations((prev) => [payload.new as Reservation, ...prev])
-          } else if (payload.eventType === 'UPDATE') {
-            setReservations((prev) =>
-              prev.map((res) =>
-                res.id === payload.new.id ? (payload.new as Reservation) : res
-              )
-            )
-          } else if (payload.eventType === 'DELETE') {
-            setReservations((prev) =>
-              prev.filter((res) => res.id !== payload.old.id)
-            )
-          }
-        }
-      )
-      .subscribe()
-
-    return () => {
-      supabase.removeChannel(channel)
-    }
-  }, [supabase, fetchReservations])
+  usePolling(() => fetchReservations(), POLL_INTERVAL_MS)
 
   return { reservations, loading, error, refetch: fetchReservations }
 }
 
+// Alias kept for callers that use the shorter name.
+export function useReservations() {
+  const { reservations, loading, error, refetch } = useUserReservations()
+  return {
+    reservations: reservations as Reservation[],
+    loading,
+    error,
+    refetch,
+  }
+}
+
+// Every reservation (GET /api/admin/reservations, ADMIN only).
 export function useAllReservations() {
-  const supabase = createClient()
   const [reservations, setReservations] = useState<ReservationWithDetails[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const fetchReservations = useCallback(async () => {
+  const fetchReservations = useCallback(async (showLoading = false) => {
+    if (showLoading) setLoading(true)
     try {
-      setLoading(true)
-      const { data, error } = await supabase
-        .from('reservations')
-        .select(`
-          *,
-          unit:units(*),
-          user:profiles(*)
-        `)
-        .order('start_time', { ascending: false })
-
-      if (error) throw error
-      setReservations(data || [])
+      const data = (await fetchJson(
+        '/api/admin/reservations'
+      )) as ReservationWithDetails[]
+      setReservations(data)
+      setError(null)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch reservations')
+      setError(
+        err instanceof Error ? err.message : 'Failed to fetch reservations'
+      )
     } finally {
       setLoading(false)
     }
-  }, [supabase])
+  }, [])
 
   useEffect(() => {
-    fetchReservations()
+    fetchReservations(true)
+  }, [fetchReservations])
 
-    const channel = supabase
-      .channel('all-reservations')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'reservations' },
-        () => {
-          fetchReservations()
-        }
-      )
-      .subscribe()
-
-    return () => {
-      supabase.removeChannel(channel)
-    }
-  }, [supabase, fetchReservations])
+  usePolling(() => fetchReservations(), POLL_INTERVAL_MS)
 
   return { reservations, loading, error, refetch: fetchReservations }
 }
 
+// 15-minute booking lock helpers.
 export function useReservationLock() {
-  const supabase = createClient()
   const [locking, setLocking] = useState(false)
 
+  // POST /api/locks
   const acquireLock = async (
     unitId: string,
     startTime: Date,
-    endTime: Date,
-    durationMinutes: number = 15
-  ): Promise<{ success: boolean; session_id: string; message: string } | null> => {
+    endTime: Date
+  ): Promise<LockResult | null> => {
     setLocking(true)
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) throw new Error('User not authenticated')
-
-      const { data, error } = await supabase.rpc('acquire_unit_lock', {
-        p_unit_id: unitId,
-        p_user_id: user.id,
-        p_start_time: startTime.toISOString(),
-        p_end_time: endTime.toISOString(),
-        p_duration_minutes: durationMinutes,
-      } as any)
-
-      if (error) throw error
-      return data as { success: boolean; session_id: string; message: string } | null
+      const res = await fetch('/api/locks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          unit_id: unitId,
+          start_time: startTime.toISOString(),
+          end_time: endTime.toISOString(),
+        }),
+      })
+      if (!res.ok) return null
+      return (await res.json()) as LockResult
+    } catch (err) {
+      console.error('Failed to acquire lock:', err)
+      return null
     } finally {
       setLocking(false)
     }
   }
 
+  // DELETE /api/locks/[session_id]
   const releaseLock = async (sessionId: string): Promise<boolean> => {
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) throw new Error('User not authenticated')
-
-      const { data, error } = await supabase.rpc('release_unit_lock', {
-        p_session_id: sessionId,
-        p_user_id: user.id,
-      } as any)
-
-      if (error) throw error
-      return data as boolean as boolean
+      const res = await fetch(`/api/locks/${encodeURIComponent(sessionId)}`, {
+        method: 'DELETE',
+      })
+      if (!res.ok) return false
+      const data = (await res.json()) as { success: boolean }
+      return data.success
     } catch (err) {
       console.error('Failed to release lock:', err)
       return false

@@ -1,1 +1,17 @@
 node_modules
+.next
+
+# agent worktrees (local tooling, never committed)
+.kilo/
+
+# environment files (.env.local must never be committed)
+.env*
+!.env.example
+
+# local SQLite database
+prisma/*.db
+prisma/*.db-journal
+
+# test artifacts
+playwright-report/
+test-results/

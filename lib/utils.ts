@@ -65,6 +65,23 @@ export function calculateDurationHours(start: Date, end: Date): number {
   return Math.ceil(diffMs / (1000 * 60 * 60))
 }
 
+// True when the selected hourly slots form one uninterrupted block.
+// 0 or 1 slot is trivially contiguous; for 2+ slots, sorting ascending each
+// slot must be exactly one hour after the previous one. This is what makes
+// the booked range (first slot -> end of last slot) equal the number of
+// selected slots, so the displayed duration/price match the server.
+export function areSlotsContiguous(slots: Date[]): boolean {
+  if (slots.length <= 1) return true
+  const sorted = [...slots].sort((a, b) => a.getTime() - b.getTime())
+  const ONE_HOUR_MS = 60 * 60 * 1000
+  for (let i = 1; i < sorted.length; i++) {
+    if (sorted[i].getTime() - sorted[i - 1].getTime() !== ONE_HOUR_MS) {
+      return false
+    }
+  }
+  return true
+}
+
 export function isTimeSlotAvailable(
   slotStart: Date,
   slotEnd: Date,

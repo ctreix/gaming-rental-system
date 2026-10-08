@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useUnits } from '@/hooks/useUnits'
-import { useUser } from '@/hooks/useSupabase'
+import { useUser, logout } from '@/hooks/useAuth'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -18,7 +18,6 @@ import {
   Lock,
   LogOut
 } from 'lucide-react'
-import { createClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import { UnitType, UnitStatus } from '@/types'
 
@@ -58,20 +57,18 @@ const statusConfig: Record<UnitStatus, { label: string; className: string; icon:
 
 export default function CustomerPortal() {
   const { units, loading } = useUnits()
-  const { user } = useUser()
+  const { user, loading: userLoading } = useUser()
   const router = useRouter()
-  const supabase = createClient()
   const [activeTab, setActiveTab] = useState('all')
 
   useEffect(() => {
-    if (!user && !loading) {
+    if (!user && !userLoading) {
       router.push('/auth/login')
     }
-  }, [user, loading, router])
+  }, [user, userLoading, router])
 
   const handleLogout = async () => {
-    await supabase.auth.signOut()
-    router.push('/')
+    await logout()
   }
 
   const filteredUnits = activeTab === 'all' 
@@ -83,7 +80,7 @@ export default function CustomerPortal() {
   const ps5Count = units.filter(u => u.type === 'PS5').length
   const vipCount = units.filter(u => u.type === 'VIP').length
 
-  if (loading || (!user && !loading)) {
+  if (userLoading || loading || (!user && !userLoading)) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-pulse text-cyan-400">Loading...</div>
