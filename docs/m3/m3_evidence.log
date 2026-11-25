@@ -1,0 +1,273 @@
+RUN 2026-11-11T19:07:29.780Z
+BASE=http://localhost:3247  REGISTER_PATH=/api/auth/register
+DATABASE_URL=file:./verify_m3c.db
+users sebelum run = 0
+
+=== TC-BVA-01 — full_name 2 karakter (batas bawah valid)
+[TC-BVA-01] REQUEST POST /api/auth/register { full_name: "AA", email: "bva01-name-2@example.com", phone_number: "8888888888", password: <string 40 chars> }
+[TC-BVA-01] HTTP    200
+[TC-BVA-01] RESPONS {"user":{"id":"cmwchqyah0000e1ncvuambv0p","email":"bva01-name-2@example.com","full_name":"AA","phone_number":"8888888888","role":"CUSTOMER"}}
+[TC-BVA-01] COOKIE  session disetel
+[TC-BVA-01] DB      email="bva01-name-2@example.com" user_terbentuk=ya role=CUSTOMER phone_number="8888888888"
+[TC-BVA-01] HARAPAN HTTP 200 → SESUAI
+
+=== TC-BVA-02 — full_name 3 karakter
+[TC-BVA-02] REQUEST POST /api/auth/register { full_name: "AAA", email: "bva02-name-3@example.com", phone_number: "8888888888", password: <string 40 chars> }
+[TC-BVA-02] HTTP    200
+[TC-BVA-02] RESPONS {"user":{"id":"cmwchqyd90001e1ncrtallio2","email":"bva02-name-3@example.com","full_name":"AAA","phone_number":"8888888888","role":"CUSTOMER"}}
+[TC-BVA-02] COOKIE  session disetel
+[TC-BVA-02] DB      email="bva02-name-3@example.com" user_terbentuk=ya role=CUSTOMER phone_number="8888888888"
+[TC-BVA-02] HARAPAN HTTP 200 → SESUAI
+
+=== TC-BVA-03 — full_name 99 karakter
+[TC-BVA-03] REQUEST POST /api/auth/register { full_name: <string 99 chars>, email: "bva03-name-99@example.com", phone_number: "8888888888", password: <string 40 chars> }
+[TC-BVA-03] HTTP    200
+[TC-BVA-03] RESPONS {"user":{"id":"cmwchqyfo0002e1nceqtzlikc","email":"bva03-name-99@example.com","full_name":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA","phone_number":"8888888888","role":"CUSTOMER"}}
+[TC-BVA-03] COOKIE  session disetel
+[TC-BVA-03] DB      email="bva03-name-99@example.com" user_terbentuk=ya role=CUSTOMER phone_number="8888888888"
+[TC-BVA-03] HARAPAN HTTP 200 → SESUAI
+
+=== TC-BVA-04 — full_name 100 karakter (batas atas valid)
+[TC-BVA-04] REQUEST POST /api/auth/register { full_name: <string 100 chars>, email: "bva04-name-100@example.com", phone_number: "8888888888", password: <string 40 chars> }
+[TC-BVA-04] HTTP    200
+[TC-BVA-04] RESPONS {"user":{"id":"cmwchqyi10003e1nctkfaeqsg","email":"bva04-name-100@example.com","full_name":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA","phone_number":"8888888888","role":"CUSTOMER"}}
+[TC-BVA-04] COOKIE  session disetel
+[TC-BVA-04] DB      email="bva04-name-100@example.com" user_terbentuk=ya role=CUSTOMER phone_number="8888888888"
+[TC-BVA-04] HARAPAN HTTP 200 → SESUAI
+
+=== TC-BVA-05 — phone_number 0 karakter (string kosong)
+[TC-BVA-05] REQUEST POST /api/auth/register { full_name: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", email: "bva05-phone-0@example.com", phone_number: "", password: <string 40 chars> }
+[TC-BVA-05] HTTP    200
+[TC-BVA-05] RESPONS {"user":{"id":"cmwchqyke0004e1ncslv3k28h","email":"bva05-phone-0@example.com","full_name":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA","phone_number":null,"role":"CUSTOMER"}}
+[TC-BVA-05] COOKIE  session disetel
+[TC-BVA-05] DB      email="bva05-phone-0@example.com" user_terbentuk=ya role=CUSTOMER phone_number=NULL
+[TC-BVA-05] HARAPAN HTTP 200 → SESUAI
+
+=== TC-BVA-06 — phone_number 1 karakter
+[TC-BVA-06] REQUEST POST /api/auth/register { full_name: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", email: "bva06-phone-1@example.com", phone_number: "8", password: <string 40 chars> }
+[TC-BVA-06] HTTP    200
+[TC-BVA-06] RESPONS {"user":{"id":"cmwchqynm0005e1ncgpimetsz","email":"bva06-phone-1@example.com","full_name":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA","phone_number":"8","role":"CUSTOMER"}}
+[TC-BVA-06] COOKIE  session disetel
+[TC-BVA-06] DB      email="bva06-phone-1@example.com" user_terbentuk=ya role=CUSTOMER phone_number="8"
+[TC-BVA-06] HARAPAN HTTP 200 → SESUAI
+
+=== TC-BVA-07 — phone_number 19 karakter
+[TC-BVA-07] REQUEST POST /api/auth/register { full_name: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", email: "bva07-phone-19@example.com", phone_number: "8888888888888888888", password: <string 40 chars> }
+[TC-BVA-07] HTTP    200
+[TC-BVA-07] RESPONS {"user":{"id":"cmwchqyq40006e1ncl5voran2","email":"bva07-phone-19@example.com","full_name":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA","phone_number":"8888888888888888888","role":"CUSTOMER"}}
+[TC-BVA-07] COOKIE  session disetel
+[TC-BVA-07] DB      email="bva07-phone-19@example.com" user_terbentuk=ya role=CUSTOMER phone_number="8888888888888888888"
+[TC-BVA-07] HARAPAN HTTP 200 → SESUAI
+
+=== TC-BVA-08 — phone_number 20 karakter (batas atas valid)
+[TC-BVA-08] REQUEST POST /api/auth/register { full_name: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", email: "bva08-phone-20@example.com", phone_number: "88888888888888888888", password: <string 40 chars> }
+[TC-BVA-08] HTTP    200
+[TC-BVA-08] RESPONS {"user":{"id":"cmwchqysf0007e1nc2tf8poq3","email":"bva08-phone-20@example.com","full_name":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA","phone_number":"88888888888888888888","role":"CUSTOMER"}}
+[TC-BVA-08] COOKIE  session disetel
+[TC-BVA-08] DB      email="bva08-phone-20@example.com" user_terbentuk=ya role=CUSTOMER phone_number="88888888888888888888"
+[TC-BVA-08] HARAPAN HTTP 200 → SESUAI
+
+=== TC-BVA-09 — password 8 karakter (batas bawah valid)
+[TC-BVA-09] REQUEST POST /api/auth/register { full_name: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", email: "bva09-pass-8@example.com", phone_number: "8888888888", password: <string 8 chars> }
+[TC-BVA-09] HTTP    200
+[TC-BVA-09] RESPONS {"user":{"id":"cmwchqyur0008e1nc8f73tkbe","email":"bva09-pass-8@example.com","full_name":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA","phone_number":"8888888888","role":"CUSTOMER"}}
+[TC-BVA-09] COOKIE  session disetel
+[TC-BVA-09] DB      email="bva09-pass-8@example.com" user_terbentuk=ya role=CUSTOMER phone_number="8888888888"
+[TC-BVA-09] HARAPAN HTTP 200 → SESUAI
+
+=== TC-BVA-10 — password 9 karakter
+[TC-BVA-10] REQUEST POST /api/auth/register { full_name: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", email: "bva10-pass-9@example.com", phone_number: "8888888888", password: <string 9 chars> }
+[TC-BVA-10] HTTP    200
+[TC-BVA-10] RESPONS {"user":{"id":"cmwchqyxl0009e1ncnllyeg6y","email":"bva10-pass-9@example.com","full_name":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA","phone_number":"8888888888","role":"CUSTOMER"}}
+[TC-BVA-10] COOKIE  session disetel
+[TC-BVA-10] DB      email="bva10-pass-9@example.com" user_terbentuk=ya role=CUSTOMER phone_number="8888888888"
+[TC-BVA-10] HARAPAN HTTP 200 → SESUAI
+
+=== TC-BVA-11 — password 71 karakter
+[TC-BVA-11] REQUEST POST /api/auth/register { full_name: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", email: "bva11-pass-71@example.com", phone_number: "8888888888", password: <string 71 chars> }
+[TC-BVA-11] HTTP    200
+[TC-BVA-11] RESPONS {"user":{"id":"cmwchqz03000ae1nczkgeo8qx","email":"bva11-pass-71@example.com","full_name":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA","phone_number":"8888888888","role":"CUSTOMER"}}
+[TC-BVA-11] COOKIE  session disetel
+[TC-BVA-11] DB      email="bva11-pass-71@example.com" user_terbentuk=ya role=CUSTOMER phone_number="8888888888"
+[TC-BVA-11] HARAPAN HTTP 200 → SESUAI
+
+=== TC-BVA-12 — password 72 karakter (batas atas valid)
+[TC-BVA-12] REQUEST POST /api/auth/register { full_name: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", email: "bva12-pass-72@example.com", phone_number: "8888888888", password: <string 72 chars> }
+[TC-BVA-12] HTTP    200
+[TC-BVA-12] RESPONS {"user":{"id":"cmwchqz2f000be1ncrz4hmsi7","email":"bva12-pass-72@example.com","full_name":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA","phone_number":"8888888888","role":"CUSTOMER"}}
+[TC-BVA-12] COOKIE  session disetel
+[TC-BVA-12] DB      email="bva12-pass-72@example.com" user_terbentuk=ya role=CUSTOMER phone_number="8888888888"
+[TC-BVA-12] HARAPAN HTTP 200 → SESUAI
+
+=== TC-BVA-13 — nominal: nama 50 / phone 10 / password 40
+[TC-BVA-13] REQUEST POST /api/auth/register { full_name: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", email: "bva13-nominal@example.com", phone_number: "8888888888", password: <string 40 chars> }
+[TC-BVA-13] HTTP    200
+[TC-BVA-13] RESPONS {"user":{"id":"cmwchqz4o000ce1ncavf32j28","email":"bva13-nominal@example.com","full_name":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA","phone_number":"8888888888","role":"CUSTOMER"}}
+[TC-BVA-13] COOKIE  session disetel
+[TC-BVA-13] DB      email="bva13-nominal@example.com" user_terbentuk=ya role=CUSTOMER phone_number="8888888888"
+[TC-BVA-13] HARAPAN HTTP 200 → SESUAI
+
+=== TC-EP-01 — phone_number terisi (10 digit)
+[TC-EP-01] REQUEST POST /api/auth/register { full_name: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", email: "ep01-phone-10@example.com", phone_number: "8888888888", password: <string 40 chars> }
+[TC-EP-01] HTTP    200
+[TC-EP-01] RESPONS {"user":{"id":"cmwchqz70000de1ncvy3zvod0","email":"ep01-phone-10@example.com","full_name":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA","phone_number":"8888888888","role":"CUSTOMER"}}
+[TC-EP-01] COOKIE  session disetel
+[TC-EP-01] DB      email="ep01-phone-10@example.com" user_terbentuk=ya role=CUSTOMER phone_number="8888888888"
+[TC-EP-01] HARAPAN HTTP 200 → SESUAI
+
+=== TC-EP-02 — phone_number kosong
+[TC-EP-02] REQUEST POST /api/auth/register { full_name: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", email: "ep02-phone-empty@example.com", phone_number: "", password: <string 40 chars> }
+[TC-EP-02] HTTP    200
+[TC-EP-02] RESPONS {"user":{"id":"cmwchqz9a000ee1nc7wyzc8pa","email":"ep02-phone-empty@example.com","full_name":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA","phone_number":null,"role":"CUSTOMER"}}
+[TC-EP-02] COOKIE  session disetel
+[TC-EP-02] DB      email="ep02-phone-empty@example.com" user_terbentuk=ya role=CUSTOMER phone_number=NULL
+[TC-EP-02] HARAPAN HTTP 200 → SESUAI
+
+=== TC-EP-03 — full_name 1 karakter
+[TC-EP-03] REQUEST POST /api/auth/register { full_name: "A", email: "ep03-name-1@example.com", phone_number: "8888888888", password: <string 40 chars> }
+[TC-EP-03] HTTP    400
+[TC-EP-03] RESPONS {"error":"Full name must be at least 2 characters"}
+[TC-EP-03] COOKIE  session tidak disetel
+[TC-EP-03] DB      email="ep03-name-1@example.com" user_terbentuk=tidak
+[TC-EP-03] HARAPAN HTTP 400 → SESUAI
+
+=== TC-EP-04 — full_name 101 karakter
+[TC-EP-04] REQUEST POST /api/auth/register { full_name: <string 101 chars>, email: "ep04-name-101@example.com", phone_number: "8888888888", password: <string 40 chars> }
+[TC-EP-04] HTTP    400
+[TC-EP-04] RESPONS {"error":"Full name must be at most 100 characters"}
+[TC-EP-04] COOKIE  session tidak disetel
+[TC-EP-04] DB      email="ep04-name-101@example.com" user_terbentuk=tidak
+[TC-EP-04] HARAPAN HTTP 400 → SESUAI
+
+=== TC-EP-05 — email tanpa @
+[TC-EP-05] REQUEST POST /api/auth/register { full_name: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", email: "invalid-email", phone_number: "8888888888", password: <string 40 chars> }
+[TC-EP-05] HTTP    400
+[TC-EP-05] RESPONS {"error":"Invalid email address"}
+[TC-EP-05] COOKIE  session tidak disetel
+[TC-EP-05] DB      email="invalid-email" user_terbentuk=tidak
+[TC-EP-05] HARAPAN HTTP 400 → SESUAI
+
+=== TC-EP-06 — email 255 karakter dengan format valid
+[TC-EP-06] REQUEST POST /api/auth/register { full_name: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", email: <string 255 chars>, phone_number: "8888888888", password: <string 40 chars> }
+[TC-EP-06] HTTP    400
+[TC-EP-06] RESPONS {"error":"Email must be at most 254 characters"}
+[TC-EP-06] COOKIE  session tidak disetel
+[TC-EP-06] DB      email="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa@example.com" user_terbentuk=tidak
+[TC-EP-06] HARAPAN HTTP 400 → SESUAI
+
+=== SETUP — email ep07-dup@example.com terdaftar lebih dulu (prasyarat TC-EP-07)
+[SETUP] REQUEST POST /api/auth/register { full_name: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", email: "ep07-dup@example.com", phone_number: "8888888888", password: <string 40 chars> }
+[SETUP] HTTP    200
+[SETUP] RESPONS {"user":{"id":"cmwchqzd6000fe1nc0n0zww33","email":"ep07-dup@example.com","full_name":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA","phone_number":"8888888888","role":"CUSTOMER"}}
+[SETUP] DB      email="ep07-dup@example.com" user_terbentuk=ya
+
+=== TC-EP-07 — email sudah terdaftar (duplikat persis)
+[TC-EP-07] REQUEST POST /api/auth/register { full_name: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", email: "ep07-dup@example.com", phone_number: "8888888888", password: <string 40 chars> }
+[TC-EP-07] HTTP    409
+[TC-EP-07] RESPONS {"error":"An account with this email already exists"}
+[TC-EP-07] COOKIE  session tidak disetel
+[TC-EP-07] DB      email="ep07-dup@example.com" user_terbentuk=ya role=CUSTOMER phone_number="8888888888"
+[TC-EP-07] CATATAN Baris users untuk email ini berasal dari SETUP di atas, bukan dari request 409 ini.
+[TC-EP-07] HARAPAN HTTP 409 → SESUAI
+
+=== TC-EP-08 — phone_number 21 karakter
+[TC-EP-08] REQUEST POST /api/auth/register { full_name: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", email: "ep08-phone-21@example.com", phone_number: "888888888888888888888", password: <string 40 chars> }
+[TC-EP-08] HTTP    400
+[TC-EP-08] RESPONS {"error":"Phone number must be at most 20 characters"}
+[TC-EP-08] COOKIE  session tidak disetel
+[TC-EP-08] DB      email="ep08-phone-21@example.com" user_terbentuk=tidak
+[TC-EP-08] HARAPAN HTTP 400 → SESUAI
+
+=== TC-EP-09 — password 7 karakter
+[TC-EP-09] REQUEST POST /api/auth/register { full_name: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", email: "ep09-pass-7@example.com", phone_number: "8888888888", password: <string 7 chars> }
+[TC-EP-09] HTTP    400
+[TC-EP-09] RESPONS {"error":"Password must be at least 8 characters"}
+[TC-EP-09] COOKIE  session tidak disetel
+[TC-EP-09] DB      email="ep09-pass-7@example.com" user_terbentuk=tidak
+[TC-EP-09] HARAPAN HTTP 400 → SESUAI
+
+=== TC-EP-10 — password 73 karakter
+[TC-EP-10] REQUEST POST /api/auth/register { full_name: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", email: "ep10-pass-73@example.com", phone_number: "8888888888", password: <string 73 chars> }
+[TC-EP-10] HTTP    400
+[TC-EP-10] RESPONS {"error":"Password must be at most 72 characters"}
+[TC-EP-10] COOKIE  session tidak disetel
+[TC-EP-10] DB      email="ep10-pass-73@example.com" user_terbentuk=tidak
+[TC-EP-10] HARAPAN HTTP 400 → SESUAI
+
+=== TC-EP-11 — password tanpa angka (abcdefgh)
+[TC-EP-11] REQUEST POST /api/auth/register { full_name: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", email: "ep11-pass-no-digit@example.com", phone_number: "8888888888", password: <string 8 chars> }
+[TC-EP-11] HTTP    400
+[TC-EP-11] RESPONS {"error":"Password must contain at least one digit"}
+[TC-EP-11] COOKIE  session tidak disetel
+[TC-EP-11] DB      email="ep11-pass-no-digit@example.com" user_terbentuk=tidak
+[TC-EP-11] HARAPAN HTTP 400 → SESUAI
+
+=== TC-EP-12 — password tanpa huruf (12345678)
+[TC-EP-12] REQUEST POST /api/auth/register { full_name: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", email: "ep12-pass-no-letter@example.com", phone_number: "8888888888", password: <string 8 chars> }
+[TC-EP-12] HTTP    400
+[TC-EP-12] RESPONS {"error":"Password must contain at least one letter"}
+[TC-EP-12] COOKIE  session tidak disetel
+[TC-EP-12] DB      email="ep12-pass-no-letter@example.com" user_terbentuk=tidak
+[TC-EP-12] HARAPAN HTTP 400 → SESUAI
+
+=== SETUP — email ep01@example.com terdaftar lebih dulu (prasyarat TC-EP-13)
+[SETUP] REQUEST POST /api/auth/register { full_name: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", email: "ep01@example.com", phone_number: "8888888888", password: <string 40 chars> }
+[SETUP] HTTP    200
+[SETUP] RESPONS {"user":{"id":"cmwchqzhv000ge1nc4zaalshh","email":"ep01@example.com","full_name":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA","phone_number":"8888888888","role":"CUSTOMER"}}
+[SETUP] DB      email="ep01@example.com" user_terbentuk=ya
+
+=== TC-EP-13 — email "EP01@Example.COM" saat "ep01@example.com" sudah terdaftar (variasi huruf)
+[TC-EP-13] REQUEST POST /api/auth/register { full_name: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", email: "EP01@Example.COM", phone_number: "8888888888", password: <string 40 chars> }
+[TC-EP-13] HTTP    200
+[TC-EP-13] RESPONS {"user":{"id":"cmwchqzk5000he1ncoanyit64","email":"EP01@Example.COM","full_name":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA","phone_number":"8888888888","role":"CUSTOMER"}}
+[TC-EP-13] COOKIE  session disetel
+[TC-EP-13] DB      email="EP01@Example.COM" user_terbentuk=ya role=CUSTOMER phone_number="8888888888"
+[TC-EP-13] CATATAN Harapan 409 mengasumsikan email diperlakukan case-insensitive. Bila route memakai nilai apa adanya, hasil 200 = akun ganda.
+[TC-EP-13] HARAPAN HTTP 409 → BEDA
+
+--- TC-EP-13.b: bukti DB (query langsung pada DB salinan) ---
+USER id=cmwchqzk5000he1ncoanyit64 email="EP01@Example.COM" role=CUSTOMER phone_number="8888888888" created_at=2026-11-11T19:07:31.590Z
+USER id=cmwchqzhv000ge1nc4zaalshh email="ep01@example.com" role=CUSTOMER phone_number="8888888888" created_at=2026-11-11T19:07:31.508Z
+SELECT COUNT(*) FROM users WHERE lower(email)='ep01@example.com' -> 2
+SELECT ... WHERE email='ep01@example.com' COLLATE BINARY -> 1 baris ["ep01@example.com"]
+SELECT ... WHERE email='ep01@example.com' COLLATE NOCASE -> 2 baris ["EP01@Example.COM","ep01@example.com"]
+INDEX sqlite_autoindex_users_1 :: (autoindex)
+INDEX users_email_key :: CREATE UNIQUE INDEX "users_email_key" ON "users"("email")
+findUnique({email:'EP01@Example.COM'}) -> id=cmwchqzk5000he1ncoanyit64 email="EP01@Example.COM"
+findUnique({email:'ep01@example.com'}) -> id=cmwchqzhv000ge1nc4zaalshh email="ep01@example.com"
+
+--- TC-EP-13.c: LOGIN dengan variasi huruf (password sama untuk kedua akun) ---
+[LOGIN] email persis lowercase email="ep01@example.com" -> HTTP 200 — masuk sebagai user.id=cmwchqzhv000ge1nc4zaalshh user.email="ep01@example.com"
+[LOGIN] respons persis: {"user":{"id":"cmwchqzhv000ge1nc4zaalshh","email":"ep01@example.com","full_name":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA","phone_number":"8888888888","role":"CUSTOMER"}}
+[LOGIN] email persis seperti saat dibuat email="EP01@Example.COM" -> HTTP 200 — masuk sebagai user.id=cmwchqzk5000he1ncoanyit64 user.email="EP01@Example.COM"
+[LOGIN] respons persis: {"user":{"id":"cmwchqzk5000he1ncoanyit64","email":"EP01@Example.COM","full_name":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA","phone_number":"8888888888","role":"CUSTOMER"}}
+[LOGIN] variasi campuran email="ep01@EXAMPLE.com" -> HTTP 401 — DITOLAK error="Invalid email or password"
+[LOGIN] respons persis: {"error":"Invalid email or password"}
+[LOGIN] variasi huruf besar semua email="EP01@EXAMPLE.COM" -> HTTP 401 — DITOLAK error="Invalid email or password"
+[LOGIN] respons persis: {"error":"Invalid email or password"}
+
+--- TC-EP-13.c: FORGOT-PASSWORD dengan variasi huruf (bukti = baris email_outbox baru) ---
+[FORGOT] persis lowercase email="ep01@example.com" -> HTTP 200
+[FORGOT] respons persis: {"success":true,"message":"If an account exists for this email, a reset link has been generated."}
+[FORGOT] email_outbox baru=1 to=["ep01@example.com"]; password_reset_tokens 0 -> 1
+[FORGOT] persis seperti saat dibuat email="EP01@Example.COM" -> HTTP 200
+[FORGOT] respons persis: {"success":true,"message":"If an account exists for this email, a reset link has been generated."}
+[FORGOT] email_outbox baru=1 to=["EP01@Example.COM"]; password_reset_tokens 1 -> 2
+[FORGOT] variasi campuran email="ep01@EXAMPLE.com" -> HTTP 200
+[FORGOT] respons persis: {"success":true,"message":"If an account exists for this email, a reset link has been generated."}
+[FORGOT] email_outbox baru=0 to=[]; password_reset_tokens 2 -> 2
+[FORGOT] huruf besar semua email="EP01@EXAMPLE.COM" -> HTTP 200
+[FORGOT] respons persis: {"success":true,"message":"If an account exists for this email, a reset link has been generated."}
+[FORGOT] email_outbox baru=0 to=[]; password_reset_tokens 2 -> 2
+[FORGOT] kontrol: email tidak terdaftar email="tidak-ada@example.com" -> HTTP 200
+[FORGOT] respons persis: {"success":true,"message":"If an account exists for this email, a reset link has been generated."}
+[FORGOT] email_outbox baru=0 to=[]; password_reset_tokens 2 -> 2
+
+=== RINGKASAN ===
+Total kasus: 26; SESUAI: 25; BEDA: 1
+BEDA TC-EP-13 — email "EP01@Example.COM" saat "ep01@example.com" sudah terdaftar (variasi huruf): diharapkan HTTP 409, aktual 200, respons {"user":{"id":"cmwchqzk5000he1ncoanyit64","email":"EP01@Example.COM","full_name":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA","phone_number":"8888888888","role":"CUSTOMER"}}
+Distribusi status HTTP: {"200":16,"400":9,"409":1}
+users setelah run = 18
+CSV: C:\Users\beatskit\Documents\Univ Stuff\Project\Rekayasa Kebutuhan\gaming-rental-system\docs\m3\m3_results.csv (26 baris data)
+LOG: C:\Users\beatskit\Documents\Univ Stuff\Project\Rekayasa Kebutuhan\gaming-rental-system\docs\m3\m3_evidence.log
+SELESAI 2026-11-11T19:07:32.193Z
